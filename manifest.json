@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "GitHub Conversation Button",
+  "version": "1.0.0",
+  "description": "Open the current GitHub PR's Conversation tab in a popup from any PR page.",
+  "permissions": [
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://github.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Show GitHub PR Conversation"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
