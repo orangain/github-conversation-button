@@ -1,3 +1,32 @@
+:root {
+  --bg-canvas: #ffffff;
+  --color-muted: #57606a;
+}
+
+html[data-resolved-theme="dark"],
+html[data-resolved-theme="dark_colorblind"],
+html[data-resolved-theme="dark_tritanopia"] {
+  --bg-canvas: #0d1117;
+  --color-muted: #8b949e;
+}
+
+html[data-resolved-theme="dark_dimmed"] {
+  --bg-canvas: #22272e;
+  --color-muted: #768390;
+}
+
+html[data-resolved-theme="dark_high_contrast"] {
+  --bg-canvas: #0a0c10;
+  --color-muted: #bdc4cc;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-resolved-theme]) {
+    --bg-canvas: #0d1117;
+    --color-muted: #8b949e;
+  }
+}
+
 * { box-sizing: border-box; }
 html, body {
   margin: 0;
@@ -7,14 +36,17 @@ html, body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
   font-size: 14px;
   color-scheme: light dark;
-  background: #ffffff;
+  background: var(--bg-canvas);
+}
+body {
+  padding: 12px;
 }
 #conversation-frame {
   width: 100%;
   height: 100%;
   border: 0;
   display: block;
-  background: #ffffff;
+  background: var(--bg-canvas);
 }
 .message {
   width: 100%;
@@ -23,20 +55,8 @@ html, body {
   align-items: center;
   justify-content: center;
   padding: 24px;
-  color: #57606a;
+  color: var(--color-muted);
   text-align: center;
   line-height: 1.5;
 }
 [hidden] { display: none !important; }
-
-@media (prefers-color-scheme: dark) {
-  html, body {
-    background: #0d1117;
-  }
-  #conversation-frame {
-    background: #0d1117;
-  }
-  .message {
-    color: #8b949e;
-  }
-}

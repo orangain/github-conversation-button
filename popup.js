@@ -1,4 +1,7 @@
 const PR_URL_RE = /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)(?:\/[^?#]*)?(?:[?#].*)?$/;
+const THEME_STORAGE_KEY = 'gh-cb-theme-v1';
+
+applyTheme(loadCachedTheme());
 
 document.addEventListener('DOMContentLoaded', main);
 
@@ -30,6 +33,10 @@ async function main() {
     if (!response || !response.ok) {
       throw new Error((response && response.error) || 'Failed to fetch PR page.');
     }
+    if (response.theme) {
+      applyTheme(response.theme);
+      saveCachedTheme(response.theme);
+    }
     const patched = injectBaseTag(response.html, 'https://github.com/');
     await loadIntoIframe(frame, patched);
 
@@ -45,6 +52,36 @@ function getActiveTab() {
   return new Promise((resolve) =>
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => resolve(tabs[0]))
   );
+}
+
+function loadCachedTheme() {
+  try {
+    const raw = localStorage.getItem(THEME_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function saveCachedTheme(theme) {
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(theme));
+  } catch (e) {
+    // ignore quota or disabled storage
+  }
+}
+
+function resolveActiveTheme(themeInfo) {
+  if (!themeInfo) return null;
+  const { colorMode, lightTheme, darkTheme } = themeInfo;
+  if (colorMode === 'dark') return darkTheme;
+  if (colorMode === 'light') return lightTheme;
+  return matchMedia('(prefers-color-scheme: dark)').matches ? darkTheme : lightTheme;
+}
+
+function applyTheme(themeInfo) {
+  const resolved = resolveActiveTheme(themeInfo);
+  if (resolved) document.documentElement.setAttribute('data-resolved-theme', resolved);
 }
 
 function injectBaseTag(html, baseHref) {

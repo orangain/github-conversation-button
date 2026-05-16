@@ -9,14 +9,31 @@ function getPrBaseUrl(url) {
   return m ? `https://github.com/${m[1]}/${m[2]}/pull/${m[3]}` : null;
 }
 
+function parseGitHubTheme(html) {
+  const htmlTag = html.match(/<html[^>]*>/i);
+  if (!htmlTag) return null;
+  const tag = htmlTag[0];
+  const get = (name) => {
+    const m = tag.match(new RegExp(`\\b${name}\\s*=\\s*"([^"]+)"`, 'i'));
+    return m ? m[1] : null;
+  };
+  return {
+    colorMode: get('data-color-mode') || 'auto',
+    lightTheme: get('data-light-theme') || 'light',
+    darkTheme: get('data-dark-theme') || 'dark',
+  };
+}
+
 async function fetchAndCache(prBaseUrl) {
   if (inFlight.has(prBaseUrl)) return inFlight.get(prBaseUrl);
   const promise = (async () => {
     const res = await fetch(prBaseUrl, { credentials: 'include' });
     if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${prBaseUrl}`);
     const html = await res.text();
-    cache.set(prBaseUrl, { html, timestamp: Date.now() });
-    return html;
+    const theme = parseGitHubTheme(html);
+    const entry = { html, theme, timestamp: Date.now() };
+    cache.set(prBaseUrl, entry);
+    return entry;
   })();
   inFlight.set(prBaseUrl, promise);
   try {
@@ -69,14 +86,14 @@ chrome.runtime.onStartup.addListener(prefetchExistingTabs);
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (!msg || msg.type !== 'get-conversation' || !msg.url) return;
   (async () => {
-    const entry = cache.get(msg.url);
-    if (entry && Date.now() - entry.timestamp < CACHE_TTL_MS) {
-      sendResponse({ ok: true, html: entry.html, fromCache: true });
+    const cached = cache.get(msg.url);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+      sendResponse({ ok: true, html: cached.html, theme: cached.theme, fromCache: true });
       return;
     }
     try {
-      const html = await fetchAndCache(msg.url);
-      sendResponse({ ok: true, html, fromCache: false });
+      const entry = await fetchAndCache(msg.url);
+      sendResponse({ ok: true, html: entry.html, theme: entry.theme, fromCache: false });
     } catch (err) {
       sendResponse({ ok: false, error: err.message || String(err) });
     }
