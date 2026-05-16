@@ -9,6 +9,9 @@
   "host_permissions": [
     "https://github.com/*"
   ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
     "default_popup": "popup.html",
     "default_title": "Show GitHub PR Conversation"

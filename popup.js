@@ -26,8 +26,11 @@ async function main() {
 
     showMessage('Loading conversation…');
 
-    const html = await fetchPullRequestHtml(prBaseUrl);
-    const patched = injectBaseTag(html, 'https://github.com/');
+    const response = await chrome.runtime.sendMessage({ type: 'get-conversation', url: prBaseUrl });
+    if (!response || !response.ok) {
+      throw new Error((response && response.error) || 'Failed to fetch PR page.');
+    }
+    const patched = injectBaseTag(response.html, 'https://github.com/');
     await loadIntoIframe(frame, patched);
 
     hideMessage();
@@ -42,12 +45,6 @@ function getActiveTab() {
   return new Promise((resolve) =>
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => resolve(tabs[0]))
   );
-}
-
-async function fetchPullRequestHtml(url) {
-  const res = await fetch(url, { credentials: 'include' });
-  if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${url}`);
-  return await res.text();
 }
 
 function injectBaseTag(html, baseHref) {
