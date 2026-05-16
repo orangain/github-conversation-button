@@ -6,6 +6,7 @@ html, body {
   height: 600px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
   font-size: 14px;
+  color-scheme: light dark;
   background: #ffffff;
 }
 #conversation-frame {
@@ -13,6 +14,7 @@ html, body {
   height: 100%;
   border: 0;
   display: block;
+  background: #ffffff;
 }
 .message {
   width: 100%;
@@ -26,3 +28,15 @@ html, body {
   line-height: 1.5;
 }
 [hidden] { display: none !important; }
+
+@media (prefers-color-scheme: dark) {
+  html, body {
+    background: #0d1117;
+  }
+  #conversation-frame {
+    background: #0d1117;
+  }
+  .message {
+    color: #8b949e;
+  }
+}
