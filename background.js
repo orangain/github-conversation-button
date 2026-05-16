@@ -3,6 +3,7 @@ const CACHE_TTL_MS = 2 * 60 * 1000;
 
 const cache = new Map();
 const inFlight = new Map();
+let lastScroll = null;
 
 function getPrBaseUrl(url) {
   const m = url && PR_URL_RE.exec(url);
@@ -84,16 +85,22 @@ chrome.runtime.onInstalled.addListener(prefetchExistingTabs);
 chrome.runtime.onStartup.addListener(prefetchExistingTabs);
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  if (!msg || msg.type !== 'get-conversation' || !msg.url) return;
+  if (!msg) return;
+  if (msg.type === 'save-scroll' && msg.prBaseUrl) {
+    lastScroll = { prBaseUrl: msg.prBaseUrl, scrollY: Math.max(0, Number(msg.scrollY) || 0) };
+    return;
+  }
+  if (msg.type !== 'get-conversation' || !msg.url) return;
   (async () => {
+    const savedScrollY = (lastScroll && lastScroll.prBaseUrl === msg.url) ? lastScroll.scrollY : 0;
     const cached = cache.get(msg.url);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-      sendResponse({ ok: true, html: cached.html, theme: cached.theme, fromCache: true });
+      sendResponse({ ok: true, html: cached.html, theme: cached.theme, savedScrollY, fromCache: true });
       return;
     }
     try {
       const entry = await fetchAndCache(msg.url);
-      sendResponse({ ok: true, html: entry.html, theme: entry.theme, fromCache: false });
+      sendResponse({ ok: true, html: entry.html, theme: entry.theme, savedScrollY, fromCache: false });
     } catch (err) {
       sendResponse({ ok: false, error: err.message || String(err) });
     }

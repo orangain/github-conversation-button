@@ -38,7 +38,8 @@ async function main() {
       saveCachedTheme(response.theme);
     }
     const patched = injectBaseTag(response.html, 'https://github.com/');
-    await loadIntoIframe(frame, patched);
+    await loadIntoIframe(frame, patched, response.savedScrollY || 0);
+    attachScrollSaver(frame, prBaseUrl);
 
     hideMessage();
     frame.hidden = false;
@@ -71,6 +72,48 @@ function saveCachedTheme(theme) {
   }
 }
 
+function getIframeScrollY(frame) {
+  try {
+    const doc = frame.contentDocument;
+    if (!doc) return null;
+    const el = doc.scrollingElement || doc.documentElement || doc.body;
+    return el ? el.scrollTop : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function setIframeScrollY(frame, y) {
+  try {
+    const doc = frame.contentDocument;
+    if (!doc) return;
+    if (doc.scrollingElement) doc.scrollingElement.scrollTop = y;
+    if (doc.documentElement) doc.documentElement.scrollTop = y;
+    if (doc.body) doc.body.scrollTop = y;
+  } catch (e) {
+    // ignore
+  }
+}
+
+function attachScrollSaver(frame, prBaseUrl) {
+  try {
+    const doc = frame.contentDocument;
+    if (!doc) return;
+    let scheduled = false;
+    const save = () => {
+      scheduled = false;
+      const y = getIframeScrollY(frame);
+      if (y === null) return;
+      chrome.runtime.sendMessage({ type: 'save-scroll', prBaseUrl, scrollY: y }).catch(() => {});
+    };
+    doc.addEventListener('scroll', () => {
+      if (scheduled) return;
+      scheduled = true;
+      setTimeout(save, 100);
+    }, { passive: true, capture: true });
+  } catch (e) {}
+}
+
 function resolveActiveTheme(themeInfo) {
   if (!themeInfo) return null;
   const { colorMode, lightTheme, darkTheme } = themeInfo;
@@ -94,7 +137,7 @@ function injectBaseTag(html, baseHref) {
   return `<head>${tag}</head>` + html;
 }
 
-function loadIntoIframe(frame, srcdoc) {
+function loadIntoIframe(frame, srcdoc, scrollY = 0) {
   return new Promise((resolve, reject) => {
     let timer;
     const onLoad = () => {
@@ -109,6 +152,9 @@ function loadIntoIframe(frame, srcdoc) {
         }
         doc.body.innerHTML = '';
         doc.body.appendChild(target);
+        if (scrollY > 0) {
+          requestAnimationFrame(() => setIframeScrollY(frame, scrollY));
+        }
         resolve();
       } catch (e) {
         reject(e);
