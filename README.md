@@ -2,6 +2,8 @@
 
 A minimal Chrome extension that adds a single toolbar button. Click it on any Pull Request page to see the PR's Conversation tab in a popup.
 
+![Screenshot of the extension in action](docs/images/screenshot.png)
+
 ## Features
 
 - One toolbar button. Click it on a PR page to open the Conversation tab in a popup.
