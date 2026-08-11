@@ -37,7 +37,7 @@ async function main() {
       applyTheme(response.theme);
       saveCachedTheme(response.theme);
     }
-    const patched = injectBaseTag(response.html, 'https://github.com/');
+    const patched = injectBaseTag(response.html, prBaseUrl);
     await loadIntoIframe(frame, patched, response.savedScrollY || 0);
     attachScrollSaver(frame, prBaseUrl);
 
@@ -114,6 +114,32 @@ function attachScrollSaver(frame, prBaseUrl) {
   } catch (e) {}
 }
 
+function attachLinkHandler(frame) {
+  const doc = frame.contentDocument;
+  if (!doc) return;
+
+  doc.addEventListener('click', (event) => {
+    if (event.defaultPrevented || event.button !== 0) return;
+
+    const anchor = event.target.closest && event.target.closest('a[href]');
+    if (!anchor) return;
+
+    let url;
+    try {
+      url = new URL(anchor.getAttribute('href'), doc.baseURI);
+    } catch (e) {
+      return;
+    }
+
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
+
+    // GitHub cannot be loaded as a child of the extension. Open links in a
+    // regular tab instead, which also leaves the user's current PR untouched.
+    event.preventDefault();
+    chrome.tabs.create({ url: url.href });
+  });
+}
+
 function resolveActiveTheme(themeInfo) {
   if (!themeInfo) return null;
   const { colorMode, lightTheme, darkTheme } = themeInfo;
@@ -152,6 +178,7 @@ function loadIntoIframe(frame, srcdoc, scrollY = 0) {
         }
         doc.body.innerHTML = '';
         doc.body.appendChild(target);
+        attachLinkHandler(frame);
         if (scrollY > 0) {
           requestAnimationFrame(() => setIframeScrollY(frame, scrollY));
         }
