@@ -1,6 +1,6 @@
 # GitHub Conversation Button
 
-A minimal Chrome extension that adds a single toolbar button. Click it on any Pull Request page to see the PR's Conversation tab in a popup.
+A minimal Chrome extension that adds a single toolbar button. Click it on any Pull Request page to see the PR's Conversation tab in a popup, so you can check the conversation while reviewing a diff without navigating back to the overview page.
 
 ![Screenshot of the extension in action](docs/images/screenshot.png)
 
