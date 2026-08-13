@@ -1,5 +1,5 @@
 const PR_URL_RE = /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)(?:\/[^?#]*)?(?:[?#].*)?$/;
-const CACHE_TTL_MS = 2 * 60 * 1000;
+const CACHE_TTL_MS = 10 * 60 * 1000;
 
 const cache = new Map();
 const inFlight = new Map();
@@ -94,8 +94,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   (async () => {
     const savedScrollY = (lastScroll && lastScroll.prBaseUrl === msg.url) ? lastScroll.scrollY : 0;
     const cached = cache.get(msg.url);
-    if (!msg.forceReload && cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    if (!msg.forceReload && cached) {
       sendResponse({ ok: true, html: cached.html, theme: cached.theme, savedScrollY, fromCache: true });
+      if (Date.now() - cached.timestamp >= CACHE_TTL_MS) {
+        prefetch(msg.url);
+      }
       return;
     }
     try {
