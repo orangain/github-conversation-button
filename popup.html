@@ -6,7 +6,10 @@
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <div id="message" class="message" role="status" hidden></div>
+  <div id="message" class="message" role="status" hidden>
+    <span id="message-text"></span>
+    <a id="reload-link" href="#" hidden>Reload</a>
+  </div>
   <iframe id="conversation-frame" title="PR Conversation" hidden></iframe>
   <script src="popup.js"></script>
 </body>

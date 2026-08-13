@@ -94,7 +94,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   (async () => {
     const savedScrollY = (lastScroll && lastScroll.prBaseUrl === msg.url) ? lastScroll.scrollY : 0;
     const cached = cache.get(msg.url);
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    if (!msg.forceReload && cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
       sendResponse({ ok: true, html: cached.html, theme: cached.theme, savedScrollY, fromCache: true });
       return;
     }

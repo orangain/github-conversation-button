@@ -3,14 +3,23 @@ const THEME_STORAGE_KEY = 'gh-cb-theme-v1';
 
 applyTheme(loadCachedTheme());
 
-document.addEventListener('DOMContentLoaded', main);
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('reload-link').addEventListener('click', (event) => {
+    event.preventDefault();
+    main(true);
+  });
+  main();
+});
 
-async function main() {
+async function main(forceReload = false) {
   const frame = document.getElementById('conversation-frame');
   const message = document.getElementById('message');
+  const messageText = document.getElementById('message-text');
+  const reloadLink = document.getElementById('reload-link');
 
-  const showMessage = (text) => {
-    message.textContent = text;
+  const showMessage = (text, canReload = false) => {
+    messageText.textContent = text;
+    reloadLink.hidden = !canReload;
     message.hidden = false;
     frame.hidden = true;
   };
@@ -29,7 +38,11 @@ async function main() {
 
     showMessage('Loading conversation…');
 
-    const response = await chrome.runtime.sendMessage({ type: 'get-conversation', url: prBaseUrl });
+    const response = await chrome.runtime.sendMessage({
+      type: 'get-conversation',
+      url: prBaseUrl,
+      forceReload,
+    });
     if (!response || !response.ok) {
       throw new Error((response && response.error) || 'Failed to fetch PR page.');
     }
@@ -45,7 +58,7 @@ async function main() {
     frame.hidden = false;
   } catch (err) {
     console.error(err);
-    showMessage(`Failed to load conversation: ${err.message || err}`);
+    showMessage(`Failed to load conversation: ${err.message || err}`, true);
   }
 }
 
