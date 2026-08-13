@@ -90,6 +90,34 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     lastScroll = { prBaseUrl: msg.prBaseUrl, scrollY: Math.max(0, Number(msg.scrollY) || 0) };
     return;
   }
+  if (msg.type === 'submit-reaction' && msg.url && Array.isArray(msg.fields)) {
+    (async () => {
+      try {
+        const url = new URL(msg.url);
+        if (url.protocol !== 'https:' || url.hostname !== 'github.com' || !url.pathname.includes('/reactions')) {
+          throw new Error('Invalid reaction URL.');
+        }
+        const body = new URLSearchParams();
+        for (const field of msg.fields) {
+          if (Array.isArray(field) && field.length === 2 && typeof field[0] === 'string') {
+            body.append(field[0], String(field[1]));
+          }
+        }
+        const res = await fetch(url.href, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body,
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status} updating reaction`);
+        cache.clear();
+        sendResponse({ ok: true });
+      } catch (err) {
+        sendResponse({ ok: false, error: err.message || String(err) });
+      }
+    })();
+    return true;
+  }
   if (msg.type !== 'get-conversation' || !msg.url) return;
   (async () => {
     const savedScrollY = (lastScroll && lastScroll.prBaseUrl === msg.url) ? lastScroll.scrollY : 0;

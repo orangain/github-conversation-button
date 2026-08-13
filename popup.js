@@ -153,6 +153,54 @@ function attachLinkHandler(frame) {
   });
 }
 
+function attachReactionHandler(frame) {
+  const doc = frame.contentDocument;
+  if (!doc) return;
+
+  doc.addEventListener('submit', async (event) => {
+    const form = event.target;
+    const submitter = event.submitter;
+    const action = submitter && submitter.hasAttribute('formaction')
+      ? submitter.formAction
+      : form.action;
+
+    let url;
+    try {
+      url = new URL(action, doc.baseURI);
+    } catch (e) {
+      return;
+    }
+
+    if (url.hostname !== 'github.com' || !url.pathname.includes('/reactions')) return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (submitter) submitter.disabled = true;
+
+    try {
+      const formData = new FormData(form, submitter);
+      const response = await chrome.runtime.sendMessage({
+        type: 'submit-reaction',
+        url: url.href,
+        fields: Array.from(formData.entries()),
+      });
+      if (!response || !response.ok) {
+        throw new Error((response && response.error) || 'Failed to update reaction.');
+      }
+      await main(true);
+    } catch (err) {
+      console.error(err);
+      const message = document.getElementById('message');
+      document.getElementById('message-text').textContent = `Failed to update reaction: ${err.message || err}`;
+      document.getElementById('reload-link').hidden = false;
+      message.hidden = false;
+      frame.hidden = true;
+    } finally {
+      if (submitter) submitter.disabled = false;
+    }
+  }, true);
+}
+
 function resolveActiveTheme(themeInfo) {
   if (!themeInfo) return null;
   const { colorMode, lightTheme, darkTheme } = themeInfo;
@@ -192,6 +240,7 @@ function loadIntoIframe(frame, srcdoc, scrollY = 0) {
         doc.body.innerHTML = '';
         doc.body.appendChild(target);
         attachLinkHandler(frame);
+        attachReactionHandler(frame);
         if (scrollY > 0) {
           requestAnimationFrame(() => setIframeScrollY(frame, scrollY));
         }
