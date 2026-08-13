@@ -4,6 +4,7 @@ const THEME_STORAGE_KEY = 'gh-cb-theme-v1';
 applyTheme(loadCachedTheme());
 
 document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('refresh-button').addEventListener('click', () => main(true));
   document.getElementById('reload-link').addEventListener('click', (event) => {
     event.preventDefault();
     main(true);
@@ -16,6 +17,7 @@ async function main(forceReload = false) {
   const message = document.getElementById('message');
   const messageText = document.getElementById('message-text');
   const reloadLink = document.getElementById('reload-link');
+  const refreshButton = document.getElementById('refresh-button');
 
   const showMessage = (text, canReload = false) => {
     messageText.textContent = text;
@@ -26,6 +28,7 @@ async function main(forceReload = false) {
   const hideMessage = () => { message.hidden = true; };
 
   try {
+    refreshButton.disabled = true;
     const tab = await getActiveTab();
     const match = tab && tab.url ? PR_URL_RE.exec(tab.url) : null;
     if (!match) {
@@ -59,6 +62,8 @@ async function main(forceReload = false) {
   } catch (err) {
     console.error(err);
     showMessage(`Failed to load conversation: ${err.message || err}`, true);
+  } finally {
+    refreshButton.disabled = false;
   }
 }
 
