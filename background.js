@@ -44,12 +44,18 @@ async function fetchAndCache(prBaseUrl) {
   }
 }
 
-function prefetch(prBaseUrl) {
+function prefetch(prBaseUrl, notify = false) {
   const entry = cache.get(prBaseUrl);
   if (entry && Date.now() - entry.timestamp < CACHE_TTL_MS) return;
-  fetchAndCache(prBaseUrl).catch((err) => {
-    console.warn('Prefetch failed:', prBaseUrl, err);
-  });
+  fetchAndCache(prBaseUrl)
+    .catch((err) => {
+      console.warn('Prefetch failed:', prBaseUrl, err);
+    })
+    .finally(() => {
+      if (notify) {
+        chrome.runtime.sendMessage({ type: 'conversation-refresh-finished', url: prBaseUrl }).catch(() => {});
+      }
+    });
 }
 
 chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
@@ -123,9 +129,17 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     const savedScrollY = (lastScroll && lastScroll.prBaseUrl === msg.url) ? lastScroll.scrollY : 0;
     const cached = cache.get(msg.url);
     if (!msg.forceReload && cached) {
-      sendResponse({ ok: true, html: cached.html, theme: cached.theme, savedScrollY, fromCache: true });
-      if (Date.now() - cached.timestamp >= CACHE_TTL_MS) {
-        prefetch(msg.url);
+      const stale = Date.now() - cached.timestamp >= CACHE_TTL_MS;
+      sendResponse({
+        ok: true,
+        html: cached.html,
+        theme: cached.theme,
+        savedScrollY,
+        fromCache: true,
+        refreshing: stale,
+      });
+      if (stale) {
+        prefetch(msg.url, true);
       }
       return;
     }

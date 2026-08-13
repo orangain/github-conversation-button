@@ -1,5 +1,7 @@
 const PR_URL_RE = /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)(?:\/[^?#]*)?(?:[?#].*)?$/;
 const THEME_STORAGE_KEY = 'gh-cb-theme-v1';
+let currentPrBaseUrl = null;
+let backgroundRefreshing = false;
 
 applyTheme(loadCachedTheme());
 
@@ -12,12 +14,25 @@ document.addEventListener('DOMContentLoaded', () => {
   main();
 });
 
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg && msg.type === 'conversation-refresh-finished' && msg.url === currentPrBaseUrl) {
+    backgroundRefreshing = false;
+    setRefreshButtonState(false);
+  }
+});
+
+function setRefreshButtonState(refreshing) {
+  const button = document.getElementById('refresh-button');
+  button.disabled = refreshing;
+  button.classList.toggle('is-refreshing', refreshing);
+  button.setAttribute('aria-label', refreshing ? 'Reloading conversation' : 'Reload conversation');
+}
+
 async function main(forceReload = false) {
   const frame = document.getElementById('conversation-frame');
   const message = document.getElementById('message');
   const messageText = document.getElementById('message-text');
   const reloadLink = document.getElementById('reload-link');
-  const refreshButton = document.getElementById('refresh-button');
 
   const showMessage = (text, canReload = false) => {
     messageText.textContent = text;
@@ -28,7 +43,8 @@ async function main(forceReload = false) {
   const hideMessage = () => { message.hidden = true; };
 
   try {
-    refreshButton.disabled = true;
+    backgroundRefreshing = false;
+    setRefreshButtonState(true);
     const tab = await getActiveTab();
     const match = tab && tab.url ? PR_URL_RE.exec(tab.url) : null;
     if (!match) {
@@ -38,6 +54,7 @@ async function main(forceReload = false) {
 
     const [, owner, repo, num] = match;
     const prBaseUrl = `https://github.com/${owner}/${repo}/pull/${num}`;
+    currentPrBaseUrl = prBaseUrl;
 
     showMessage('Loading conversation…');
 
@@ -56,6 +73,7 @@ async function main(forceReload = false) {
     const patched = injectBaseTag(response.html, prBaseUrl);
     await loadIntoIframe(frame, patched, response.savedScrollY || 0);
     attachScrollSaver(frame, prBaseUrl);
+    backgroundRefreshing = Boolean(response.refreshing);
 
     hideMessage();
     frame.hidden = false;
@@ -63,7 +81,7 @@ async function main(forceReload = false) {
     console.error(err);
     showMessage(`Failed to load conversation: ${err.message || err}`, true);
   } finally {
-    refreshButton.disabled = false;
+    setRefreshButtonState(backgroundRefreshing);
   }
 }
 
